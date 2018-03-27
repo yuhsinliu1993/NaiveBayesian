@@ -1,6 +1,7 @@
 # Naive Bayesian
 
 For Training & Testing:
+
     # Discrete mode
     $ python naive_bayesian.py --mode=0
 
