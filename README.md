@@ -1,7 +1,6 @@
 # Naive Bayesian
 
-Download spaCy pre-trained Glove embedding weights
-
+For Training & Testing:
     # Discrete mode
     $ python naive_bayesian.py --mode=0
 
