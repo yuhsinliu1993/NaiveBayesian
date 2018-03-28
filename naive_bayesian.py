@@ -42,9 +42,9 @@ class NaiveBayesian(object):
 
         print("[-] Training finished ...\n")
 
-    def inference(self, test_images, test_labels, N=10):
-        log_posterior = np.zeros(N)
-        predictions   = np.zeros(N)
+    def inference(self, test_images, test_labels, N, print_num=10):
+        log_posterior = np.zeros((N, 10))
+        predictions = np.zeros(N)
 
         print('[+] Testing starts ...')
 
@@ -54,17 +54,24 @@ class NaiveBayesian(object):
                 print("[*] Test %d images" % i)
 
             # Calculate the log likelihood given the class
-            log_likelihood = np.zeros_like(log_prior)
+            log_likelihood = np.zeros(len(log_prior))
             for l in range(self.num_classes):
                 # Aussme pixels are independent to each other
                 for d in range(self.num_features):
                     _bin = int(test_images[i][d] // int(256//self.num_bins))
                     log_likelihood[l] += np.log(self.p[l][d][_bin])
 
-            log_posterior[i] = (log_likelihood + log_prior).max()
-            predictions[i] = (log_likelihood + log_prior).argmax()
+            log_posterior[i] = log_likelihood + log_prior
+            predictions[i] = np.argmax(log_posterior[i])
 
-            # print("prediction: %d   true label: %d" % (predictions[i], test_labels[i]))
+        print("\n[+] ---------- %d Prediction Results ----------" % print_num)
+        for i in range(print_num):
+            print("log_posterior: [", end='')
+            for j in range(log_posterior.shape[1]-1):
+                print('{0:0.2f}, '.format(log_posterior[i][j]), end='')
+            print('{0:0.2f}]'.format(log_posterior[i][-1]))
+
+            print("prediction: %d   true label: %d\n" % (predictions[i], test_labels[i]))
 
         accuracy = np.sum(predictions==test_labels[:N]) / N
 
@@ -99,28 +106,38 @@ class GaussianNaiveBayesian(object):
 
         print("[-] Training finished ...\n")
 
-    def inference(self, test_images, test_labels, N=10):
-        log_posterior = np.zeros(N)
-        predictions   = np.zeros(N)
+    def inference(self, test_images, test_labels, N, print_num=10):
+        log_posterior = np.zeros((N, 10))
+        predictions = np.zeros(N)
 
         print('[+] Testing starts ...')
 
         for i in range(N):
             if i % 1000 == 0:
                 print("[*] Test %d images" % i)
-            predictions[i], log_posterior[i] = self.classify(test_images[i])
-            # print("prediction: %d   true label: %d" % (predictions[i], test_labels[i]))
+
+            log_posterior[i] = self.classify(test_images[i])
+            predictions[i] = np.argmax(log_posterior[i])
+
+        print("\n[+] ---------- %d Prediction Results ----------" % print_num)
+        for i in range(print_num):
+            print("log_posterior: [", end='')
+            for j in range(log_posterior.shape[1]-1):
+                print('{0:0.2f}, '.format(log_posterior[i][j]), end='')
+            print('{0:0.2f}]'.format(log_posterior[i][-1]))
+
+            print("prediction: %d   true label: %d\n" % (predictions[i], test_labels[i]))
 
         accuracy = np.sum(predictions==test_labels[:N]) / N
 
         return log_posterior, 1 - accuracy
 
     def classify(self, image):
-        result = [self._log_likelihood(image, c) for c in range(self.num_classes)]
+        result = [self._log_probability(image, _class) for _class in range(self.num_classes)]
 
-        return np.argmax(result), np.max(result)
+        return np.array(result)
 
-    def _log_likelihood(self, x, c):
+    def _log_probability(self, x, c):
         log_prior_c = np.log(self.prior[c])
 
         log_likelihood = 0.0
@@ -142,6 +159,7 @@ if __name__ == "__main__":
     parser.add_argument('--mode', type=int, help='0 for discrete mode, 1 for continuous mode', default=0)
     parser.add_argument('--bin', type=int, help='specify the number of bins for discrete mode', default=32)
     parser.add_argument('--num_classes', type=int, help='specify the number of classes', default=10)
+    parser.add_argument('--num_test', type=int, help='specify the number of images being tested', default=10000)
     args = parser.parse_args()
 
     # Load dataset
@@ -159,5 +177,5 @@ if __name__ == "__main__":
         pass
 
     model.train(train_images, train_labels)
-    predictions, error_rate = model.inference(test_images, test_labels, len(test_images))
-    print("\nError Rate: %.2f %%" % (error_rate*100))
+    predictions, error_rate = model.inference(test_images, test_labels, args.num_test)
+    print("\nError Rate: %.4f %%" % (error_rate*100))
